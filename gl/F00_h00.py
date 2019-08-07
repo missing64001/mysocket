@@ -8,7 +8,9 @@ from functools import reduce
 CURRENTURL = os.path.dirname(__file__)
 import traceback
 import hashlib
+from functools import wraps
 
+HGENUMERATE_DICT = {}
 
 x='''
 # 装饰器 指定程序出错运行次数
@@ -30,12 +32,41 @@ dec_try(errC=None,err=None)
 file_md5(filename)
 
 '''
-__all__ = ['tryruntime', 'get_link', 'opt_read', 'dec_try', ]
+__all__ = ['tryruntime', 'get_link', 'opt_read', 'dec_try', 'analysis_module', 'hgenumerate', 'TryClass']
+
+
+
+
 
 
 def runfilepath(*path):
     x = inspect.stack()[-1]
     return os.path.join(os.path.dirname(x.filename),*path)
+
+# 被继承类 继承后出错不会抛出
+def des(func):
+    @wraps(func)
+    def inner(*args,**kw):
+        try:
+            data = func(*args,**kw)
+        except Exception as e:
+            traceback.print_exc()
+            data = False
+        return data
+    return inner
+
+
+
+class TryClass(object):
+    def __getattribute__(self,name):
+        try:
+            res = super().__getattribute__(name)
+        except Exception:
+            traceback.print_exc()
+            res = False
+        if callable(res):
+            res = des(res)
+        return res
 
 
 # 装饰器 指定程序出错运行次数
@@ -170,10 +201,8 @@ def dec_try(errC=None,err=None):
     return _dec_try
 
 
-
+# 模块分析 输出有返回值的所有属性
 def analysis_module(module):
-    import cmd
-    module = cmd.Cmd
     dirs = dir(module)
     for d in dirs[20:]:
         ttt = getattr(module,d)
@@ -192,7 +221,17 @@ def analysis_module(module):
 
 
 
-
+def hgenumerate(start=1,length=None,isprint=True,end='\r'):
+    a = sys._getframe().f_back.f_lineno
+    b = sys._getframe().f_back.f_lasti
+    key = '%s,%s'%(a,b)
+    HGENUMERATE_DICT[key] = HGENUMERATE_DICT.get(key,start-1) + 1
+    if isprint:
+        if length:
+            print('%s/%s'%(HGENUMERATE_DICT[key],length),end=end)
+        else:
+            print(HGENUMERATE_DICT[key],end=end)
+    return HGENUMERATE_DICT[key],key
 
 
 
@@ -219,8 +258,17 @@ def test():
     b = myreduce(lambda x,y:str(x)+str(y),b)
     print(type(b))
 
+def main():
+    for i in range(10):
+        x,_ = hgenumerate(3)
+        print('x',x)
+    for i in range(20):
+        hgenumerate()
+
+        # hgenumerate()
 if __name__ == '__main__':
-    analysis_module(sys)
+    # analysis_module(sys)
+    main()
 
 
 

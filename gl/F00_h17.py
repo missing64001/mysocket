@@ -32,8 +32,8 @@ def set_title(title):
     os.system("title %s" % title)
 
 def main():
-    set_title('haha')
-    hwnd = reset_window_pos("haha")
+    # set_title('haha')
+    hwnd = reset_window_pos("BitShare")
 
     win32gui.SetWindowPos(hwnd, win32con.HWND_NOTOPMOST, 300,300,300,300, win32con.SWP_SHOWWINDOW)
 

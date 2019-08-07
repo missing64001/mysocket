@@ -21,9 +21,6 @@ def main():
     N = reset_window_pos(title)
 
 
-
-
-
     if N:
         s = 'c'
         os.system('title mysocket--client')
@@ -38,8 +35,9 @@ def main():
     elif s == 'c':
         MyS.clientfile = r'F:\tmp'
         MyS.serverfile = r'F:\tmpserver'
+        MyS.filetype = ['py']
         MyS.client()
-        MyS.synchro_download(MyS.soc)
+        MyS.synchro_upload()
         # MyS.synchro_upload(MyS.soc)
     else:
         print('启动时输入了错误的参数')
@@ -55,6 +53,7 @@ class SynchroData(object):
         self.port = 9999
         self.soc = socket(AF_INET,SOCK_STREAM)
         self.isclient = None
+        self.filetype = ['py']
         # self._homepath = '/home/tarena/桌面/h_recv/'
         # print('判断是否有文件夹,并创建')
     def server(self):
@@ -92,8 +91,6 @@ class SynchroData(object):
                             elif type_ == 'send_file':
                                 self.recv_file(r,da)
                         elif data == b'synchro_download':
-                            r.send(b'get_synchro_download')
-                            self.serverfile = r.recv(1024*FILEIOSIZE).decode('utf-8')
                             self.synchro_upload(r)
 
                         elif data == b'synchro_upload':
@@ -209,7 +206,10 @@ class SynchroData(object):
             soc.send(b'code:wrong')
             raise ValueError('错误的参数1')
 
-    def synchro_upload(self,soc):
+    def synchro_upload(self,soc=None):
+        if not soc:
+            soc = self.soc
+
         if self.isclient:
             soc.send(b'synchro_upload')
             if soc.recv(1024*FILEIOSIZE) != b'get_synchro_upload':
@@ -219,12 +219,24 @@ class SynchroData(object):
             data = soc.recv(1024*FILEIOSIZE)
             if data != b'get_serverfile':
                 raise ValueError('错误的参数，应该是%s' % 'get_serverfile')
+
+            soc.send(pickle.dumps(self.filetype))
+            data = soc.recv(1024*FILEIOSIZE)
+            if data != b'get_filetype':
+                raise ValueError('错误的参数，应该是%s' % 'get_filetype')
+
+
             uploadfile = self.clientfile
         else:
+            soc.send(b'get_synchro_download')
+            self.serverfile = soc.recv(1024*FILEIOSIZE).decode('utf-8')
+            soc.send(b'get_filetype')
+            self.filetype = pickle.loads(soc.recv(1024*FILEIOSIZE))
+
             uploadfile = self.serverfile
 
 
-        pinfo = path_info(uploadfile,[' '])
+        pinfo = path_info(uploadfile,self.filetype)
         pinfo = pickle.dumps(pinfo)
         print('pinfo',len(pinfo))
         soc.send(pinfo)
@@ -239,21 +251,32 @@ class SynchroData(object):
                 da = da[0][1]
                 self.send_file(soc,da)
 
-    def synchro_download(self,soc):
+    def synchro_download(self,soc=None):
+        if not soc:
+            soc = self.soc
+            
         if self.isclient:
             soc.send(b'synchro_download')
             
+            basepath = self.clientfile
+            updownfile = self.serverfile
+
             data = soc.recv(1024*FILEIOSIZE)
             if data != b'get_synchro_download':
                 raise ValueError('错误的参数，应该是%s' % data.decode('utf-8'))
-
-            basepath = self.clientfile
-            updownfile = self.serverfile
             soc.send(updownfile.encode('utf-8'))
+
+            data = soc.recv(1024*FILEIOSIZE)
+            if data != b'get_filetype':
+                raise ValueError('错误的参数，应该是%s' % data.decode('utf-8'))
+            soc.send(pickle.dumps(self.filetype))
+
         else:
             soc.send(b'get_synchro_upload')
             basepath = soc.recv(1024*FILEIOSIZE).decode('utf-8')
             soc.send(b'get_serverfile')
+            self.filetype = pickle.loads(soc.recv(1024*FILEIOSIZE))
+            soc.send(b'get_filetype')
 
         data = b''
         while True:
@@ -265,7 +288,7 @@ class SynchroData(object):
         
         sData = data[2]
         server_basepath = data[0]
-        cData = path_info(basepath,[' '])[2]
+        cData = path_info(basepath,self.filetype)[2]
         for filename,md5 in sData.items():
             if cData.get(filename) != md5:
                 print(filename,'开始发送',end='\r')

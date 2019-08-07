@@ -3,7 +3,7 @@ import os
 from pprint import pprint
 import hashlib
 import pickle
-
+import time
 try:
     from h00_mylittlefunc import tryruntime
 except ImportError:
@@ -22,8 +22,11 @@ path_info(path,T=None,NT=None):
 file_exists_not_create(filename):
 
 
-# open_write_create 写入str bytes pickle文件 如果路径不存在则创建
-def open_wc(filename,data,encoding='utf-8'):
+# open_write_create_ex 写入str bytes pickle文件 如果路径不存在则创建
+def open_wex(filename,data,encoding='utf-8'):
+
+# 读取文件
+open_rex
 
 '''
 
@@ -81,7 +84,19 @@ def file_exists_not_create(filename):
         os.makedirs(os.path.dirname(filename))
 
 # open_write_ex 写入str bytes pickle(加入了识别头)文件 如果路径不存在则创建
-def open_wex(filename,data,encoding='utf-8'):
+def open_wex(filename,data,encoding='utf-8',ifexists=None,sleep=0):
+    isexists = os.path.exists(filename)
+    if ifexists:
+        if isexists:
+            print(filename,end='文件已存在')
+            return
+    if isexists:
+        print(filename,end='文件已被覆盖')
+
+    if callable(data):
+        data = data()
+
+
     if type(data) == str:
         type_ = 'w'
     elif type(data) == bytes:
@@ -102,7 +117,7 @@ def open_wex(filename,data,encoding='utf-8'):
         print('create the path')
         os.makedirs(os.path.dirname(filename))
         open_wc(filename,data)
-
+    time.sleep(sleep)
 # 读取文件
 @tryruntime
 def open_rex(filename,type_='r',encoding='utf-8'):
