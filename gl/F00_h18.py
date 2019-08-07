@@ -43,6 +43,7 @@ def file_md5(filename):
 # 获得路径下文件的信息
 def path_info(path,T=None,NT=None):
     path = os.path.normpath(path)
+    path = path.replace('\\','/')
     filelst = set()
     for curdir,subdirs,files in os.walk(path):
         for file in files:
@@ -68,7 +69,7 @@ def analysis_data(basepath,filelst,T=None,NT=None):
             continue
         elif NT and type_ in NT:
             continue
-
+        file = file.replace('\\','/')
         fileInfoDict[file] = {'md5':file_md5(os.path.join(basepath,file))}
 
     return basepath,typeset,fileInfoDict
